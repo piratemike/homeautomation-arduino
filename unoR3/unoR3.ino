@@ -18,9 +18,9 @@ boolean left_lamp_should_be_on = false;
 boolean right_lamp_should_be_on = false;
 // override desired light states
 boolean override_main_light = false;
-boolean override_mirror_light_should_be_on = false;
-boolean override_left_lamp_should_be_on = false;
-boolean override_right_lamp_should_be_on = false;
+boolean override_mirror_light = false;
+boolean override_left_lamp = false;
+boolean override_right_lamp = false;
 
 // actual light states
 boolean main_light_on = false;
@@ -47,13 +47,16 @@ String heater_ctrl_on = "HTRON\n";
 String heater_ctrl_off = "HTROFF\n";
 String main_ctrl_on = "MNLGTON\n";
 String main_ctrl_off = "MNLGTOFF\n";
-String lamps_ctrl_on = "LMPSON\n";
-String lamps_ctrl_off = "LMPSOFF\n";
+String right_lamp_ctrl_on = "RLMPON\n";
+String right_lamp_ctrl_off = "RLMPOFF\n";
+String left_lamp_ctrl_on = "LLMPON\n";
+String left_lamp_ctrl_off = "LLMPOFF\n";
 boolean stringComplete = false;  // whether the string is complete
 
 String sleep_state_ctrl = "sleep state\n";
 String standby_state_ctrl = "standby state\n";
 String all_on_state_ctrl = "all on state\n";
+String tv_state_ctrl = "tv state\n";
 
 //MIRROR values
 int mirrorState = HIGH;
@@ -89,6 +92,21 @@ void setup(){
 void change_state(int state_code) {
   mode = state_code;
   override_main_light = false;
+  override_left_lamp = false;
+  override_right_lamp = false;
+
+}
+
+boolean calculate_light_state(boolean state_desired_on, boolean overridden) {
+  if (overridden) {
+    return !state_desired_on;
+  } else {
+    return state_desired_on;
+  }
+}
+
+boolean change_override(boolean currently_on, boolean turn_on) {
+   return currently_on != turn_on;
 }
 
 void loop(){
@@ -100,44 +118,31 @@ void loop(){
    switch (mode) {
      case 1: // standby
        // ensure all lights are off
-       if (override_main_light) {
-          main_light_should_be_on = true;
-       } else {
-          main_light_should_be_on = false;
-       }
-       left_lamp_should_be_on = false;
-       right_lamp_should_be_on = false;
+       main_light_should_be_on = calculate_light_state(false, override_main_light);
+       left_lamp_should_be_on = calculate_light_state(false, override_left_lamp);
+       right_lamp_should_be_on = calculate_light_state(false, override_right_lamp);
        door_light_active = true;
        desired_temperature = 8;
        break;
      case 2: // all on
-       if (override_main_light) {
-          main_light_should_be_on = false;
-       } else {
-          main_light_should_be_on = true;
-       }       left_lamp_should_be_on = true;
-       right_lamp_should_be_on = true;
+       main_light_should_be_on = calculate_light_state(true, override_main_light);
+       left_lamp_should_be_on = calculate_light_state(true, override_left_lamp);
+       right_lamp_should_be_on = calculate_light_state(true, override_right_lamp);
        door_light_active = false;
        desired_temperature = 20;
        break;
      case 3: // sleep
-       door_light_active = false;
-       if (override_main_light) {
-          main_light_should_be_on = true;
-       } else {
-          main_light_should_be_on = false;
-       }       left_lamp_should_be_on = false;
-       right_lamp_should_be_on = false;
+       main_light_should_be_on = calculate_light_state(false, override_main_light);
+       left_lamp_should_be_on = calculate_light_state(false, override_left_lamp);
+       right_lamp_should_be_on = calculate_light_state(false, override_right_lamp);
        desired_temperature = 18;
+       door_light_active = false;
        break;
      case 4: // tv
        door_light_active = false;
-       if (override_main_light) {
-          main_light_should_be_on = true;
-       } else {
-          main_light_should_be_on = false;
-       }       left_lamp_should_be_on = true;
-       right_lamp_should_be_on = true;
+       main_light_should_be_on = calculate_light_state(false, override_main_light);
+       left_lamp_should_be_on = calculate_light_state(true, override_left_lamp);
+       right_lamp_should_be_on = calculate_light_state(true, override_right_lamp);
        desired_temperature = 20;
        break;
      default:
@@ -200,24 +205,20 @@ void loop(){
        change_state(1);
      } else if (inputString == all_on_state_ctrl) {
        change_state(2);
+     } else if (inputString == tv_state_ctrl) {
+       change_state(4);
      } else if (inputString == main_ctrl_on) {
-       Serial.println("main light ctrl on recv");
-       if (main_light_on) {
-         Serial.println("main light already on");
-         // nothing to do 
-       } else {
-         Serial.println("main light is off");
-         // toggles the main light override
-         override_main_light = !override_main_light;
-       }
+       override_main_light = change_override(main_light_on, true);
      } else if (inputString == main_ctrl_off) {
-       Serial.println("main light ctrl off recv");
-       if (main_light_on) {
-         // toggles the main light override
-         override_main_light = !override_main_light;
-       } else {
-         // nothing to do
-       }
+       override_main_light = change_override(main_light_on, false);
+     } else if (inputString == right_lamp_ctrl_on) {
+       override_right_lamp = change_override(lamp_right_on, true);
+     } else if (inputString == right_lamp_ctrl_off) {
+       override_right_lamp = change_override(lamp_right_on, false);
+     } else if (inputString == left_lamp_ctrl_on) {
+       override_left_lamp = change_override(lamp_left_on, true);
+     } else if (inputString == left_lamp_ctrl_off) {
+       override_left_lamp = change_override(lamp_left_on, false);
      }
      inputString = "";
      stringComplete = false;
