@@ -191,66 +191,7 @@ void loop(){
         heater_on = false;
       }
       last_temp_check = millis(); 
-  } 
-
-/*
-  
-   door_open = digitalRead(DOOR_SENSOR_PIN);
-   if (door_open) {
-      // turn on the mirror light and record when we turned it on
-      digitalWrite(MIRRORLIGHT, LOW);
-      mirror_light_on = true;
-      mirror_light_on_ms = millis();
-   }
-   
-
- 
-
-
-  if (stringComplete) {
-    if (inputString == main_ctrl_on) {
-      Serial.println("MNLGTON");
-      digitalWrite(MAINLIGHT, LOW);
-      main_light_on = true;
-    } else if (inputString == main_ctrl_off) {
-      Serial.println("MNLGTOFF");
-      digitalWrite(MAINLIGHT, HIGH);
-      main_light_on = false;
-    } //else {
-      //Serial.println(inputString);
-    //}
-
-    if (inputString == lamps_ctrl_on) {
-      Serial.println("LMPSON");
-      digitalWrite(LAMPLEFT, HIGH); digitalWrite(LAMPRIGHT, HIGH);
-      lamps_on = true;
-    } else if (inputString == lamps_ctrl_off) {
-      Serial.println("LMPSOFF");
-      digitalWrite(LAMPLEFT, LOW); digitalWrite(LAMPRIGHT, LOW);
-      lamps_on = false;
-    } //else {
-     // Serial.println(inputString);
-    //}
-
-    if (inputString == heater_ctrl_on) {
-      Serial.println("HTRON");
-      digitalWrite(HEATER, LOW);
-      heater_on = true;
-    } else if (inputString == heater_ctrl_off) {
-      Serial.println("HTROFF");
-      digitalWrite(HEATER, HIGH);
-      heater_on = false;
-    } else {
-     Serial.println(inputString);
-   }
-    inputString = "";
-    stringComplete = false;
-  }
-  
-    
-*/
-    
-  
+  }   
 }
 
 void serialEvent() {
