@@ -251,7 +251,7 @@ void loop(){
          heater_on_ms = millis();
        }
      } else {
-       if (DHT.temperature > (desired_temperature + 1)) {
+       if ((DHT.temperature > (desired_temperature + 1)) and !heater_boost) {
          Serial.println("HTROFF");
          digitalWrite(HEATER, HIGH);
          heater_on = false;
