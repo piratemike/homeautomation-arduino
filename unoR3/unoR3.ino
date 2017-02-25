@@ -1,7 +1,5 @@
 #include <HomeAutomationLight.h>
 #include <HomeAutomationTimer.h>
-#include <ArdComLib.h>
-
 #include <dht.h>
 
 dht DHT;
@@ -19,7 +17,14 @@ const int door_sensor_pin = 9;
 HomeAutomationLight main_light(main_light_pin);
 HomeAutomationLight mirror_light(mirror_lamp_pin);
 HomeAutomationLight left_lamp(left_lamp_pin, false);  // active low
-HomeAutomationLight right_lamp(door_sensor_pin, false);  // active low
+HomeAutomationLight right_lamp(right_lamp_pin, false);  // active low
+
+boolean door_light_active = true; // controls if the mirror light should come on when the door opens
+unsigned long mirror_on_time_ms = 5000;
+// create a timer to manage the turning off of the mirror light after 5 seconds
+auto mirror_timer = HomeAutomationTimer(mirror_on_time_ms, 
+                                        [&mirror_light](){ mirror_light.on(); },   // call mirror_light.on when triggered
+                                        [&mirror_light](){ mirror_light.off(); });  // call mirror_light.off when time expires 
 
 // desired light states
 boolean mirror_light_should_be_on = false;
@@ -33,7 +38,6 @@ boolean override_mirror_light = false;
 boolean override_left_lamp = false;
 boolean override_right_lamp = false;
 
-boolean door_light_active = true; // controls if the mirror light should come on when the door opens
 
 int desired_temperature = 18;
 
@@ -72,7 +76,6 @@ boolean heater_boost = false;
 int mirrorState = HIGH;
 long previous_mirror_ms = 0;
 unsigned long current_mirror_ms = millis();
-long mirror_on_time_ms = 5000;
 boolean mirror_light_on = false;
 
 int mode = 1;
@@ -87,7 +90,10 @@ void setup(){
   
   //window_open = digitalRead(WINDOW_SENSOR_PIN);
   Serial.begin(9600);
+  while (!Serial) ;
   int digitalRead = DHT.temperature;
+
+  Serial.println("Starting");
   
 }
 
@@ -96,7 +102,7 @@ void change_state(int state_code) {
   override_main_light = false;
   override_left_lamp = false;
   override_right_lamp = false;
-
+  Serial.println(mode);
 }
 
 boolean calculate_light_state(boolean state_desired_on, boolean overridden) {
@@ -115,19 +121,10 @@ void check_door_light(boolean enabled) {
   if (enabled) {
     door_open = digitalRead(door_sensor_pin);
     if (door_open) {
-      // turn on the mirror light and record when we turned it on
-      digitalWrite(mirror_lamp_pin, LOW);
-      mirror_light_on = true;
-      mirror_light_on_ms = millis();
+      mirror_timer.trigger();
     }
-    
-    // check mirror light is turned on and it has been on for over mirror_on_time_ms
-    if (mirror_light_on and (millis() - mirror_light_on_ms > mirror_on_time_ms)) {
-      // turn the light off
-      digitalWrite(mirror_lamp_pin, HIGH);
-      mirror_light_on = false;
-    }
-   }
+  }
+  mirror_timer.update();
 }
 
 void loop(){
@@ -135,7 +132,6 @@ void loop(){
    // standby mode
    //    lights off
    //    heater minium 8 degrees
-
    switch (mode) {
      case 1: // standby
        // ensure all lights are off
@@ -178,6 +174,7 @@ void loop(){
    check_door_light(door_light_active);
 
    if (stringComplete) {
+     Serial.println("got input string");
      if (inputString == sleep_state_ctrl) {
        change_state(3);
      } else if (inputString == standby_state_ctrl) {
@@ -235,7 +232,12 @@ void loop(){
    }   
 }
 
+void serialEventRun(void) {
+  if (Serial.available()) serialEvent();
+}
+
 void serialEvent() {
+  Serial.println("serialEvent");
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();
