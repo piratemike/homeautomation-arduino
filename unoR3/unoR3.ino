@@ -1,5 +1,6 @@
 #include <HomeAutomationLight.h>
 #include <HomeAutomationTimer.h>
+#include <MultifunctionLED.h>
 #include <dht.h>
 
 dht DHT;
@@ -25,6 +26,10 @@ unsigned long mirror_on_time_ms = 5000;
 auto mirror_timer = HomeAutomationTimer(mirror_on_time_ms, 
                                         [&mirror_light](){ mirror_light.on(); },   // call mirror_light.on when triggered
                                         [&mirror_light](){ mirror_light.off(); });  // call mirror_light.off when time expires 
+
+
+// LEDS
+auto green_led = MultifunctionLED(5);
 
 // desired light states
 boolean mirror_light_should_be_on = false;
@@ -94,7 +99,6 @@ void setup(){
   int digitalRead = DHT.temperature;
 
   Serial.println("Starting");
-  
 }
 
 void change_state(int state_code) {
@@ -102,6 +106,7 @@ void change_state(int state_code) {
   override_main_light = false;
   override_left_lamp = false;
   override_right_lamp = false;
+  green_led.stop_fade();
   Serial.println(mode);
 }
 
@@ -154,6 +159,7 @@ void loop(){
        right_lamp_should_be_on = calculate_light_state(false, override_right_lamp);
        desired_temperature = 18;
        door_light_active = false;
+       green_led.fade_cont(2000, 50);
        break;
      case 4: // tv
        door_light_active = false;
@@ -230,6 +236,8 @@ void loop(){
        heater_boost = false;  
      }
    }   
+
+   green_led.update();
 }
 
 void serialEventRun(void) {
@@ -237,7 +245,6 @@ void serialEventRun(void) {
 }
 
 void serialEvent() {
-  Serial.println("serialEvent");
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();
