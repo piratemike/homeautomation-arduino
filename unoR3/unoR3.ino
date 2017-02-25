@@ -1,3 +1,7 @@
+#include <HomeAutomationLight.h>
+#include <HomeAutomationTimer.h>
+#include <ArdComLib.h>
+
 #include <dht.h>
 
 dht DHT;
@@ -11,22 +15,23 @@ const int left_lamp_pin = 2;
 const int right_lamp_pin = 3;
 const int door_sensor_pin = 9;
 
+// lights
+HomeAutomationLight main_light(main_light_pin);
+HomeAutomationLight mirror_light(mirror_lamp_pin);
+HomeAutomationLight left_lamp(left_lamp_pin, false);  // active low
+HomeAutomationLight right_lamp(door_sensor_pin, false);  // active low
+
 // desired light states
-boolean main_light_should_be_on = false;
 boolean mirror_light_should_be_on = false;
+boolean main_light_should_be_on = false;
 boolean left_lamp_should_be_on = false;
 boolean right_lamp_should_be_on = false;
+
 // override desired light states
 boolean override_main_light = false;
 boolean override_mirror_light = false;
 boolean override_left_lamp = false;
 boolean override_right_lamp = false;
-
-// actual light states
-boolean main_light_on = false;
-boolean lamp_left_on = false;
-boolean lamp_right_on = false;
-boolean mirror_light_on = false;
 
 boolean door_light_active = true; // controls if the mirror light should come on when the door opens
 
@@ -39,7 +44,6 @@ boolean door_open = false;
 unsigned long heater_on_ms = 0;
 unsigned long last_temp_check = 0;
 unsigned long last_door_check = 0;
-unsigned long door_light_timer = 0;
 unsigned long mirror_light_on_ms = 0;
 
 String inputString = "";         // a string to hold incoming data
@@ -69,25 +73,17 @@ int mirrorState = HIGH;
 long previous_mirror_ms = 0;
 unsigned long current_mirror_ms = millis();
 long mirror_on_time_ms = 5000;
+boolean mirror_light_on = false;
 
 int mode = 1;
 
 void setup(){
   pinMode (window_sensor_pin, INPUT_PULLUP);
   pinMode (door_sensor_pin, INPUT_PULLUP);
-  pinMode (left_lamp_pin, OUTPUT);
-  pinMode (right_lamp_pin, OUTPUT);
+  
   pinMode (heater_pin, OUTPUT);
-  pinMode (main_light_pin, OUTPUT);
-  pinMode (mirror_lamp_pin, OUTPUT);
-  
-  digitalWrite(heater_pin, HIGH);
-  digitalWrite(main_light_pin, HIGH );
-  digitalWrite(left_lamp_pin, LOW);
-  digitalWrite(right_lamp_pin, LOW);
-  digitalWrite(mirror_lamp_pin, HIGH);
-  
   // turn heater off, so its state is known
+  digitalWrite(heater_pin, HIGH);
   
   //window_open = digitalRead(WINDOW_SENSOR_PIN);
   Serial.begin(9600);
@@ -175,35 +171,9 @@ void loop(){
    }
 
    // set lights to desired states
-   if (main_light_should_be_on != main_light_on) {
-     if(main_light_should_be_on) {
-       digitalWrite(main_light_pin, LOW);
-       main_light_on = true;
-     } else {
-       digitalWrite(main_light_pin, HIGH);
-       main_light_on = false;
-     }
-   }
-
-   
-   if (left_lamp_should_be_on != lamp_left_on) {
-     if(left_lamp_should_be_on) {
-       digitalWrite(left_lamp_pin, HIGH);
-       lamp_left_on = true;
-     } else {
-       digitalWrite(left_lamp_pin, LOW);
-       lamp_left_on = false;
-     }
-   }
-   if (right_lamp_should_be_on != lamp_right_on) {
-     if(right_lamp_should_be_on) {
-       digitalWrite(right_lamp_pin, HIGH);
-       lamp_right_on = true;
-     } else {
-       digitalWrite(right_lamp_pin, LOW);
-       lamp_right_on = false;
-     }
-   }
+   main_light.set(main_light_should_be_on);
+   left_lamp.set(left_lamp_should_be_on);
+   right_lamp.set(right_lamp_should_be_on);
 
    check_door_light(door_light_active);
 
@@ -217,17 +187,17 @@ void loop(){
      } else if (inputString == tv_state_ctrl) {
        change_state(4);
      } else if (inputString == main_ctrl_on) {
-       override_main_light = change_override(main_light_on, true);
+       override_main_light = change_override(main_light.is_on(), true);
      } else if (inputString == main_ctrl_off) {
-       override_main_light = change_override(main_light_on, false);
+       override_main_light = change_override(main_light.is_on(), false);
      } else if (inputString == right_lamp_ctrl_on) {
-       override_right_lamp = change_override(lamp_right_on, true);
+       override_right_lamp = change_override(right_lamp.is_on(), true);
      } else if (inputString == right_lamp_ctrl_off) {
-       override_right_lamp = change_override(lamp_right_on, false);
+       override_right_lamp = change_override(right_lamp.is_on(), false);
      } else if (inputString == left_lamp_ctrl_on) {
-       override_left_lamp = change_override(lamp_left_on, true);
+       override_left_lamp = change_override(left_lamp.is_on(), true);
      } else if (inputString == left_lamp_ctrl_off) {
-       override_left_lamp = change_override(lamp_left_on, false);
+       override_left_lamp = change_override(left_lamp.is_on(), false);
      } else if (inputString == heater_boost_ctrl) {
        heater_boost = true;
        heater_boost_enabled_ms = millis();
