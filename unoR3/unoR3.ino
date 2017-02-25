@@ -2,14 +2,14 @@
 
 dht DHT;
 
-#define DHT11_PIN 5
-#define HEATER 13
-#define WINDOW_SENSOR_PIN 8
-#define MAINLIGHT 11
-#define MIRRORLIGHT 10
-#define LAMPLEFT 2
-#define LAMPRIGHT 3
-#define DOOR_SENSOR_PIN 9
+const int dht_pin = 5;
+const int heater_pin = 13;
+const int window_sensor_pin = 8;
+const int main_light_pin = 11;
+const int mirror_lamp_pin = 10;
+const int left_lamp_pin = 2;
+const int right_lamp_pin = 3;
+const int door_sensor_pin = 9;
 
 // desired light states
 boolean main_light_should_be_on = false;
@@ -43,23 +43,23 @@ unsigned long door_light_timer = 0;
 unsigned long mirror_light_on_ms = 0;
 
 String inputString = "";         // a string to hold incoming data
-String heater_ctrl_on = "HTRON\n";
-String heater_ctrl_off = "HTROFF\n";
-String main_ctrl_on = "MNLGTON\n";
-String main_ctrl_off = "MNLGTOFF\n";
-String right_lamp_ctrl_on = "RLMPON\n";
-String right_lamp_ctrl_off = "RLMPOFF\n";
-String left_lamp_ctrl_on = "LLMPON\n";
-String left_lamp_ctrl_off = "LLMPOFF\n";
+const String heater_ctrl_on = "HTRON\n";
+const String heater_ctrl_off = "HTROFF\n";
+const String main_ctrl_on = "MNLGTON\n";
+const String main_ctrl_off = "MNLGTOFF\n";
+const String right_lamp_ctrl_on = "RLMPON\n";
+const String right_lamp_ctrl_off = "RLMPOFF\n";
+const String left_lamp_ctrl_on = "LLMPON\n";
+const String left_lamp_ctrl_off = "LLMPOFF\n";
 boolean stringComplete = false;  // whether the string is complete
 
-String sleep_state_ctrl = "sleep state\n";
-String standby_state_ctrl = "standby state\n";
-String all_on_state_ctrl = "all on state\n";
-String tv_state_ctrl = "tv state\n";
+const String sleep_state_ctrl = "sleep state\n";
+const String standby_state_ctrl = "standby state\n";
+const String all_on_state_ctrl = "all on state\n";
+const String tv_state_ctrl = "tv state\n";
 
 // heater boost variables
-String heater_boost_ctrl = "heater boost\n";
+const String heater_boost_ctrl = "heater boost\n";
 unsigned long heater_boost_ms = 5 * 60 * 1000;  // time boost should last for
 unsigned long heater_boost_enabled_ms = 0; // time boost was enabled
 boolean heater_boost = false;
@@ -73,19 +73,19 @@ long mirror_on_time_ms = 5000;
 int mode = 1;
 
 void setup(){
-  pinMode (WINDOW_SENSOR_PIN, INPUT_PULLUP);
-  pinMode (DOOR_SENSOR_PIN, INPUT_PULLUP);
-  pinMode (LAMPLEFT, OUTPUT);
-  pinMode (LAMPRIGHT, OUTPUT);
-  pinMode (HEATER, OUTPUT);
-  pinMode (MAINLIGHT, OUTPUT);
-  pinMode (MIRRORLIGHT, OUTPUT);
+  pinMode (window_sensor_pin, INPUT_PULLUP);
+  pinMode (door_sensor_pin, INPUT_PULLUP);
+  pinMode (left_lamp_pin, OUTPUT);
+  pinMode (right_lamp_pin, OUTPUT);
+  pinMode (heater_pin, OUTPUT);
+  pinMode (main_light_pin, OUTPUT);
+  pinMode (mirror_lamp_pin, OUTPUT);
   
-  digitalWrite(HEATER, HIGH);
-  digitalWrite(MAINLIGHT, HIGH );
-  digitalWrite(LAMPLEFT, LOW);
-  digitalWrite(LAMPRIGHT, LOW);
-  digitalWrite(MIRRORLIGHT, HIGH);
+  digitalWrite(heater_pin, HIGH);
+  digitalWrite(main_light_pin, HIGH );
+  digitalWrite(left_lamp_pin, LOW);
+  digitalWrite(right_lamp_pin, LOW);
+  digitalWrite(mirror_lamp_pin, HIGH);
   
   // turn heater off, so its state is known
   
@@ -117,10 +117,10 @@ boolean change_override(boolean currently_on, boolean turn_on) {
 
 void check_door_light(boolean enabled) {
   if (enabled) {
-    door_open = digitalRead(DOOR_SENSOR_PIN);
+    door_open = digitalRead(door_sensor_pin);
     if (door_open) {
       // turn on the mirror light and record when we turned it on
-      digitalWrite(MIRRORLIGHT, LOW);
+      digitalWrite(mirror_lamp_pin, LOW);
       mirror_light_on = true;
       mirror_light_on_ms = millis();
     }
@@ -128,7 +128,7 @@ void check_door_light(boolean enabled) {
     // check mirror light is turned on and it has been on for over mirror_on_time_ms
     if (mirror_light_on and (millis() - mirror_light_on_ms > mirror_on_time_ms)) {
       // turn the light off
-      digitalWrite(MIRRORLIGHT, HIGH);
+      digitalWrite(mirror_lamp_pin, HIGH);
       mirror_light_on = false;
     }
    }
@@ -177,10 +177,10 @@ void loop(){
    // set lights to desired states
    if (main_light_should_be_on != main_light_on) {
      if(main_light_should_be_on) {
-       digitalWrite(MAINLIGHT, LOW);
+       digitalWrite(main_light_pin, LOW);
        main_light_on = true;
      } else {
-       digitalWrite(MAINLIGHT, HIGH);
+       digitalWrite(main_light_pin, HIGH);
        main_light_on = false;
      }
    }
@@ -188,19 +188,19 @@ void loop(){
    
    if (left_lamp_should_be_on != lamp_left_on) {
      if(left_lamp_should_be_on) {
-       digitalWrite(LAMPLEFT, HIGH);
+       digitalWrite(left_lamp_pin, HIGH);
        lamp_left_on = true;
      } else {
-       digitalWrite(LAMPLEFT, LOW);
+       digitalWrite(left_lamp_pin, LOW);
        lamp_left_on = false;
      }
    }
    if (right_lamp_should_be_on != lamp_right_on) {
      if(right_lamp_should_be_on) {
-       digitalWrite(LAMPRIGHT, HIGH);
+       digitalWrite(right_lamp_pin, HIGH);
        lamp_right_on = true;
      } else {
-       digitalWrite(LAMPRIGHT, LOW);
+       digitalWrite(right_lamp_pin, LOW);
        lamp_right_on = false;
      }
    }
@@ -239,21 +239,21 @@ void loop(){
      // check the last time we ran the heater code
    if (millis() - last_temp_check > 3000) {
      // it's been more than 3 seconds 
-     int chk = DHT.read11(DHT11_PIN);
+     int chk = DHT.read11(dht_pin);
      Serial.print("TMP");
      Serial.println(DHT.temperature);
 
      if (!heater_on) {
        if ((DHT.temperature < desired_temperature) or (heater_boost && (millis() - heater_boost_enabled_ms < heater_boost_ms))) {
          Serial.println("HTRON");
-         digitalWrite(HEATER, LOW);
+         digitalWrite(heater_pin, LOW);
          heater_on = true;
          heater_on_ms = millis();
        }
      } else {
        if ((DHT.temperature > (desired_temperature + 1)) and !heater_boost) {
          Serial.println("HTROFF");
-         digitalWrite(HEATER, HIGH);
+         digitalWrite(heater_pin, HIGH);
          heater_on = false;
        }
      }
