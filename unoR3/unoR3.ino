@@ -1,39 +1,47 @@
+#include <HomeAutomationLight.h>
+#include <HomeAutomationTimer.h>
 #include <dht.h>
 
 dht DHT;
 
-#define DHT11_PIN 5
-#define HEATER 7
-#define WINDOW_SENSOR_PIN 8
-#define MAINLIGHT 11
-#define MIRRORLIGHT 10
-#define LAMPLEFT 2
-#define LAMPRIGHT 3
-#define DOOR_SENSOR_PIN 9
+const int dht_pin = 5;
+const int heater_pin = 7;
+const int window_sensor_pin = 8;
+const int main_light_pin = 11;
+const int mirror_lamp_pin = 10;
+const int left_lamp_pin = 2;
+const int right_lamp_pin = 3;
+const int door_sensor_pin = 9;
 
 // overrides
 const int OVERRIDE_ON = 0;
 const int OVERRIDE_OFF = 1;
 const int DONT_OVERRIDE = 2;
+// lights
+HomeAutomationLight main_light(main_light_pin, false); // active low
+HomeAutomationLight mirror_light(mirror_lamp_pin, false);  // active low
+HomeAutomationLight left_lamp(left_lamp_pin);
+HomeAutomationLight right_lamp(right_lamp_pin);
+
+boolean door_light_active = true; // controls if the mirror light should come on when the door opens
+unsigned long mirror_on_time_ms = 5000;
+// create a timer to manage the turning off of the mirror light after 5 seconds
+auto mirror_timer = HomeAutomationTimer(mirror_on_time_ms, 
+                                        [&mirror_light](){ mirror_light.on(); },   // call mirror_light.on when triggered
+                                        [&mirror_light](){ mirror_light.off(); });  // call mirror_light.off when time expires 
 
 // desired light states
-boolean main_light_should_be_on = false;
 boolean mirror_light_should_be_on = false;
+boolean main_light_should_be_on = false;
 boolean left_lamp_should_be_on = false;
 boolean right_lamp_should_be_on = false;
+
 // override desired light state
 int override_main_light = DONT_OVERRIDE;
 int override_mirror_light = DONT_OVERRIDE;
 int override_left_lamp = DONT_OVERRIDE;
 int override_right_lamp = DONT_OVERRIDE;
 
-// actual light states
-boolean main_light_on = false;
-boolean lamp_left_on = false;
-boolean lamp_right_on = false;
-boolean mirror_light_on = false;
-
-boolean door_light_active = true; // controls if the mirror light should come on when the door opens
 
 int desired_temperature = 18;
 
@@ -44,27 +52,26 @@ boolean door_open = false;
 unsigned long heater_on_ms = 0;
 unsigned long last_temp_check = 0;
 unsigned long last_door_check = 0;
-unsigned long door_light_timer = 0;
 unsigned long mirror_light_on_ms = 0;
 
 String inputString = "";         // a string to hold incoming data
-String heater_ctrl_on = "HTRON\n";
-String heater_ctrl_off = "HTROFF\n";
-String main_ctrl_on = "MNLGTON\n";
-String main_ctrl_off = "MNLGTOFF\n";
-String right_lamp_ctrl_on = "RLMPON\n";
-String right_lamp_ctrl_off = "RLMPOFF\n";
-String left_lamp_ctrl_on = "LLMPON\n";
-String left_lamp_ctrl_off = "LLMPOFF\n";
+const String heater_ctrl_on = "HTRON\n";
+const String heater_ctrl_off = "HTROFF\n";
+const String main_ctrl_on = "MNLGTON\n";
+const String main_ctrl_off = "MNLGTOFF\n";
+const String right_lamp_ctrl_on = "RLMPON\n";
+const String right_lamp_ctrl_off = "RLMPOFF\n";
+const String left_lamp_ctrl_on = "LLMPON\n";
+const String left_lamp_ctrl_off = "LLMPOFF\n";
 boolean stringComplete = false;  // whether the string is complete
 
-String sleep_state_ctrl = "sleep state\n";
-String standby_state_ctrl = "standby state\n";
-String all_on_state_ctrl = "all on state\n";
-String tv_state_ctrl = "tv state\n";
+const String sleep_state_ctrl = "sleep state\n";
+const String standby_state_ctrl = "standby state\n";
+const String all_on_state_ctrl = "all on state\n";
+const String tv_state_ctrl = "tv state\n";
 
 // heater boost variables
-String heater_boost_ctrl = "heater boost\n";
+const String heater_boost_ctrl = "heater boost\n";
 unsigned long heater_boost_ms = 5L * 60L * 1000L;  // time boost should last for
 unsigned long heater_boost_enabled_ms = 0; // time boost was enabled
 boolean heater_boost = false;
@@ -73,31 +80,23 @@ boolean heater_boost = false;
 int mirrorState = LOW;
 long previous_mirror_ms = 0;
 unsigned long current_mirror_ms = millis();
-long mirror_on_time_ms = 5000;
+boolean mirror_light_on = false;
 
 int mode = 1;
 
 void setup(){
-  pinMode (WINDOW_SENSOR_PIN, INPUT_PULLUP);
-  pinMode (DOOR_SENSOR_PIN, INPUT_PULLUP);
-  pinMode (LAMPLEFT, OUTPUT);
-  pinMode (LAMPRIGHT, OUTPUT);
-  pinMode (HEATER, OUTPUT);
-  pinMode (MAINLIGHT, OUTPUT);
-  pinMode (MIRRORLIGHT, OUTPUT);
-  
-  digitalWrite(HEATER, HIGH);
-  digitalWrite(MAINLIGHT, HIGH);
-  digitalWrite(LAMPLEFT, LOW);
-  digitalWrite(LAMPRIGHT, LOW);
-  digitalWrite(MIRRORLIGHT, HIGH);
-  
+  pinMode (window_sensor_pin, INPUT_PULLUP);
+  pinMode (door_sensor_pin, INPUT_PULLUP);  
+  pinMode (heater_pin, OUTPUT);
   // turn heater off, so its state is known
+  digitalWrite(heater_pin, HIGH);
   
   //window_open = digitalRead(WINDOW_SENSOR_PIN);
   Serial.begin(9600);
   while (!Serial) ;
   int digitalRead = DHT.temperature;
+
+  Serial.println("Starting");
   
 }
 
@@ -122,21 +121,12 @@ boolean should_light_be_on(boolean state_desired_on, int override_value) {
 
 void check_door_light(boolean enabled) {
   if (enabled) {
-    door_open = digitalRead(DOOR_SENSOR_PIN);
+    door_open = digitalRead(door_sensor_pin);
     if (door_open) {
-      // turn on the mirror light and record when we turned it on
-      digitalWrite(MIRRORLIGHT, LOW);
-      mirror_light_on = true;
-      mirror_light_on_ms = millis();
+      mirror_timer.trigger();
     }
-    
-    // check mirror light is turned on and it has been on for over mirror_on_time_ms
-    if (mirror_light_on and (millis() - mirror_light_on_ms > mirror_on_time_ms)) {
-      // turn the light off
-      digitalWrite(MIRRORLIGHT, HIGH);
-      mirror_light_on = false;
-    }
-   }
+  }
+  mirror_timer.update();
 }
 
 void loop(){
@@ -144,7 +134,6 @@ void loop(){
    // standby mode
    //    lights off
    //    heater minium 8 degrees
-
    switch (mode) {
      case 1: // standby
        // ensure all lights are off
@@ -180,39 +169,14 @@ void loop(){
    }
 
    // set lights to desired states
-   if (main_light_should_be_on != main_light_on) {
-     if(main_light_should_be_on) {
-       digitalWrite(MAINLIGHT, LOW);
-       main_light_on = true;
-     } else {
-       digitalWrite(MAINLIGHT, HIGH);
-       main_light_on = false;
-     }
-   }
-
-   
-   if (left_lamp_should_be_on != lamp_left_on) {
-     if(left_lamp_should_be_on) {
-       digitalWrite(LAMPLEFT, HIGH);
-       lamp_left_on = true;
-     } else {
-       digitalWrite(LAMPLEFT, LOW);
-       lamp_left_on = false;
-     }
-   }
-   if (right_lamp_should_be_on != lamp_right_on) {
-     if(right_lamp_should_be_on) {
-       digitalWrite(LAMPRIGHT, HIGH);
-       lamp_right_on = true;
-     } else {
-       digitalWrite(LAMPRIGHT, LOW);
-       lamp_right_on = false;
-     }
-   }
+   main_light.set(main_light_should_be_on);
+   left_lamp.set(left_lamp_should_be_on);
+   right_lamp.set(right_lamp_should_be_on);
 
    check_door_light(door_light_active);
 
    if (stringComplete) {
+     Serial.println("got input string");
      if (inputString == sleep_state_ctrl) {
        change_state(3);
      } else if (inputString == standby_state_ctrl) {
@@ -244,21 +208,21 @@ void loop(){
      // check the last time we ran the heater code
    if (millis() - last_temp_check > 3000) {
      // it's been more than 3 seconds 
-     int chk = DHT.read11(DHT11_PIN);
+     int chk = DHT.read11(dht_pin);
      Serial.print("TMP");
      Serial.println(DHT.temperature);
 
      if (!heater_on) {
        if ((DHT.temperature < desired_temperature) or (heater_boost && (millis() - heater_boost_enabled_ms < heater_boost_ms))) {
          Serial.println("HTRON");
-         digitalWrite(HEATER, LOW);
+         digitalWrite(heater_pin, LOW);
          heater_on = true;
          heater_on_ms = millis();
        }
      } else {
        if ((DHT.temperature > (desired_temperature + 1)) and !heater_boost) {
          Serial.println("HTROFF");
-         digitalWrite(HEATER, HIGH);
+         digitalWrite(heater_pin, HIGH);
          heater_on = false;
        }
      }
@@ -270,8 +234,8 @@ void loop(){
    }   
 }
 
-
 void serialEvent() {
+  Serial.println("serialEvent");
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();
