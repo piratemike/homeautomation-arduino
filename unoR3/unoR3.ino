@@ -100,7 +100,6 @@ void change_state(int state_code) {
   override_main_light = false;
   override_left_lamp = false;
   override_right_lamp = false;
-
 }
 
 boolean calculate_light_state(boolean state_desired_on, boolean overridden) {
@@ -135,11 +134,6 @@ void check_door_light(boolean enabled) {
 }
 
 void loop(){
-
-   // standby mode
-   //    lights off
-   //    heater minium 8 degrees
-
    switch (mode) {
      case 1: // standby
        // ensure all lights are off
@@ -147,14 +141,14 @@ void loop(){
        left_lamp_should_be_on = calculate_light_state(false, override_left_lamp);
        right_lamp_should_be_on = calculate_light_state(false, override_right_lamp);
        door_light_active = true;
-       desired_temperature = 8;
+       desired_temperature = 12;
        break;
      case 2: // all on
        main_light_should_be_on = calculate_light_state(true, override_main_light);
        left_lamp_should_be_on = calculate_light_state(true, override_left_lamp);
        right_lamp_should_be_on = calculate_light_state(true, override_right_lamp);
        door_light_active = false;
-       desired_temperature = 20;
+       desired_temperature = 21;
        break;
      case 3: // sleep
        main_light_should_be_on = calculate_light_state(false, override_main_light);
