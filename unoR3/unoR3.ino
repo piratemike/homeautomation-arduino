@@ -65,12 +65,12 @@ String tv_state_ctrl = "tv state\n";
 
 // heater boost variables
 String heater_boost_ctrl = "heater boost\n";
-unsigned long heater_boost_ms = 300000;  // time boost should last for
+unsigned long heater_boost_ms = 5 * 60 * 1000;  // time boost should last for
 unsigned long heater_boost_enabled_ms = 0; // time boost was enabled
 boolean heater_boost = false;
 
 //MIRROR values
-int mirrorState = HIGH;
+int mirrorState = LOW;
 long previous_mirror_ms = 0;
 unsigned long current_mirror_ms = millis();
 long mirror_on_time_ms = 5000;
@@ -86,11 +86,11 @@ void setup(){
   pinMode (MAINLIGHT, OUTPUT);
   pinMode (MIRRORLIGHT, OUTPUT);
   
-  digitalWrite(HEATER, HIGH);
-  digitalWrite(MAINLIGHT, LOW);
-  digitalWrite(LAMPLEFT, HIGH);
-  digitalWrite(LAMPRIGHT, HIGH);
-  digitalWrite(MIRRORLIGHT, LOW);
+  digitalWrite(HEATER, LOW);
+  digitalWrite(MAINLIGHT, HIGH);
+  digitalWrite(LAMPLEFT, LOW);
+  digitalWrite(LAMPRIGHT, LOW);
+  digitalWrite(MIRRORLIGHT, HIGH);
   
   // turn heater off, so its state is known
   
@@ -131,7 +131,7 @@ void check_door_light(boolean enabled) {
     door_open = digitalRead(DOOR_SENSOR_PIN);
     if (door_open) {
       // turn on the mirror light and record when we turned it on
-      digitalWrite(MIRRORLIGHT, HIGH);
+      digitalWrite(MIRRORLIGHT, LOW);
       mirror_light_on = true;
       mirror_light_on_ms = millis();
     }
@@ -139,7 +139,7 @@ void check_door_light(boolean enabled) {
     // check mirror light is turned on and it has been on for over mirror_on_time_ms
     if (mirror_light_on and (millis() - mirror_light_on_ms > mirror_on_time_ms)) {
       // turn the light off
-      digitalWrite(MIRRORLIGHT, LOW);
+      digitalWrite(MIRRORLIGHT, HIGH);
       mirror_light_on = false;
     }
    }
@@ -193,10 +193,10 @@ void loop(){
    // set lights to desired states
    if (main_light_should_be_on != main_light_on) {
      if(main_light_should_be_on) {
-       digitalWrite(MAINLIGHT, HIGH);
+       digitalWrite(MAINLIGHT, LOW);
        main_light_on = true;
      } else {
-       digitalWrite(MAINLIGHT, LOW);
+       digitalWrite(MAINLIGHT, HIGH);
        main_light_on = false;
      }
    }
@@ -204,19 +204,19 @@ void loop(){
    
    if (left_lamp_should_be_on != lamp_left_on) {
      if(left_lamp_should_be_on) {
-       digitalWrite(LAMPLEFT, LOW);
+       digitalWrite(LAMPLEFT, HIGH);
        lamp_left_on = true;
      } else {
-       digitalWrite(LAMPLEFT, HIGH);
+       digitalWrite(LAMPLEFT, LOW);
        lamp_left_on = false;
      }
    }
    if (right_lamp_should_be_on != lamp_right_on) {
      if(right_lamp_should_be_on) {
-       digitalWrite(LAMPRIGHT, LOW);
+       digitalWrite(LAMPRIGHT, HIGH);
        lamp_right_on = true;
      } else {
-       digitalWrite(LAMPRIGHT, HIGH);
+       digitalWrite(LAMPRIGHT, LOW);
        lamp_right_on = false;
      }
    }
@@ -262,14 +262,14 @@ void loop(){
      if (!heater_on) {
        if ((DHT.temperature < desired_temperature) or (heater_boost && (millis() - heater_boost_enabled_ms < heater_boost_ms))) {
          Serial.println("HTRON");
-         digitalWrite(HEATER, LOW);
+         digitalWrite(HEATER, HIGH);
          heater_on = true;
          heater_on_ms = millis();
        }
      } else {
        if ((DHT.temperature > (desired_temperature + 1)) and !heater_boost) {
          Serial.println("HTROFF");
-         digitalWrite(HEATER, HIGH);
+         digitalWrite(HEATER, LOW);
          heater_on = false;
        }
      }
