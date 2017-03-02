@@ -65,7 +65,7 @@ String tv_state_ctrl = "tv state\n";
 
 // heater boost variables
 String heater_boost_ctrl = "heater boost\n";
-unsigned long heater_boost_ms = 5 * 60 * 1000;  // time boost should last for
+unsigned long heater_boost_ms = 5L * 60L * 1000L;  // time boost should last for
 unsigned long heater_boost_enabled_ms = 0; // time boost was enabled
 boolean heater_boost = false;
 
