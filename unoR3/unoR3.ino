@@ -117,12 +117,6 @@ boolean should_light_be_on(boolean state_desired_on, int override_value) {
   } else {
     lamp_on = state_desired_on;
   }
-  if(state_desired_on == true){ Serial.print("ON"); } else { Serial.print("OFF"); }
-  Serial.print(" ");
-  if(override_value == OVERRIDE_ON){ Serial.print("ON"); } else if (override_value == OVERRIDE_OFF)  { Serial.print("OFF"); } else { Serial.print("---"); }
-  Serial.print(" ");
-  if(lamp_on == true){ Serial.print("ON"); } else { Serial.print("OFF"); }
-  Serial.println("");
   return lamp_on;
 }
 
@@ -157,8 +151,6 @@ void loop(){
        main_light_should_be_on = should_light_be_on(false, override_main_light);
        left_lamp_should_be_on = should_light_be_on(false, override_left_lamp);
        right_lamp_should_be_on = should_light_be_on(false, override_right_lamp);
-       if(main_light_should_be_on){ Serial.println("ON"); } else { Serial.println("OFF"); }
-       Serial.println("---");
        door_light_active = true;
        desired_temperature = 8;
        break;
@@ -166,7 +158,6 @@ void loop(){
        main_light_should_be_on = should_light_be_on(true, override_main_light);
        left_lamp_should_be_on = should_light_be_on(true, override_left_lamp);
        right_lamp_should_be_on = should_light_be_on(true, override_right_lamp);
-       Serial.println("---");
        door_light_active = false;
        desired_temperature = 20;
        break;
@@ -174,7 +165,6 @@ void loop(){
        main_light_should_be_on = should_light_be_on(false, override_main_light);
        left_lamp_should_be_on = should_light_be_on(false, override_left_lamp);
        right_lamp_should_be_on = should_light_be_on(false, override_right_lamp);
-       Serial.println("---");
        desired_temperature = 18;
        door_light_active = false;
        break;
@@ -183,7 +173,6 @@ void loop(){
        main_light_should_be_on = should_light_be_on(false, override_main_light);
        left_lamp_should_be_on = should_light_be_on(true, override_left_lamp);
        right_lamp_should_be_on = should_light_be_on(true, override_right_lamp);
-       Serial.println("---");
        desired_temperature = 20;
        break;
      default:
