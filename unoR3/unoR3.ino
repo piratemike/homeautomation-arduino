@@ -11,16 +11,21 @@ dht DHT;
 #define LAMPRIGHT 3
 #define DOOR_SENSOR_PIN 9
 
+// overrides
+const int OVERRIDE_ON = 0;
+const int OVERRIDE_OFF = 1;
+const int DONT_OVERRIDE = 2;
+
 // desired light states
 boolean main_light_should_be_on = false;
 boolean mirror_light_should_be_on = false;
 boolean left_lamp_should_be_on = false;
 boolean right_lamp_should_be_on = false;
-// override desired light states
-boolean override_main_light = false;
-boolean override_mirror_light = false;
-boolean override_left_lamp = false;
-boolean override_right_lamp = false;
+// override desired light state
+int override_main_light = DONT_OVERRIDE;
+int override_mirror_light = DONT_OVERRIDE;
+int override_left_lamp = DONT_OVERRIDE;
+int override_right_lamp = DONT_OVERRIDE;
 
 // actual light states
 boolean main_light_on = false;
@@ -82,37 +87,43 @@ void setup(){
   pinMode (MIRRORLIGHT, OUTPUT);
   
   digitalWrite(HEATER, HIGH);
-  digitalWrite(MAINLIGHT, HIGH );
-  digitalWrite(LAMPLEFT, LOW);
-  digitalWrite(LAMPRIGHT, LOW);
-  digitalWrite(MIRRORLIGHT, HIGH);
+  digitalWrite(MAINLIGHT, LOW);
+  digitalWrite(LAMPLEFT, HIGH);
+  digitalWrite(LAMPRIGHT, HIGH);
+  digitalWrite(MIRRORLIGHT, LOW);
   
   // turn heater off, so its state is known
   
   //window_open = digitalRead(WINDOW_SENSOR_PIN);
   Serial.begin(9600);
+  while (!Serial) ;
   int digitalRead = DHT.temperature;
   
 }
 
 void change_state(int state_code) {
   mode = state_code;
-  override_main_light = false;
-  override_left_lamp = false;
-  override_right_lamp = false;
-
+  override_main_light = DONT_OVERRIDE;
+  override_left_lamp = DONT_OVERRIDE;
+  override_right_lamp = DONT_OVERRIDE;
 }
 
-boolean calculate_light_state(boolean state_desired_on, boolean overridden) {
-  if (overridden) {
-    return !state_desired_on;
+boolean should_light_be_on(boolean state_desired_on, int override_value) {
+  boolean lamp_on = false;
+  if (override_value == OVERRIDE_OFF) {
+    lamp_on = false;
+  } else if (override_value == OVERRIDE_ON) {
+    lamp_on = true;
   } else {
-    return state_desired_on;
+    lamp_on = state_desired_on;
   }
-}
-
-boolean change_override(boolean currently_on, boolean turn_on) {
-   return currently_on != turn_on;
+  if(state_desired_on == true){ Serial.print("ON"); } else { Serial.print("OFF"); }
+  Serial.print(" ");
+  if(override_value == OVERRIDE_ON){ Serial.print("ON"); } else if (override_value == OVERRIDE_OFF)  { Serial.print("OFF"); } else { Serial.print("---"); }
+  Serial.print(" ");
+  if(lamp_on == true){ Serial.print("ON"); } else { Serial.print("OFF"); }
+  Serial.println("");
+  return lamp_on;
 }
 
 void check_door_light(boolean enabled) {
@@ -120,7 +131,7 @@ void check_door_light(boolean enabled) {
     door_open = digitalRead(DOOR_SENSOR_PIN);
     if (door_open) {
       // turn on the mirror light and record when we turned it on
-      digitalWrite(MIRRORLIGHT, LOW);
+      digitalWrite(MIRRORLIGHT, HIGH);
       mirror_light_on = true;
       mirror_light_on_ms = millis();
     }
@@ -128,7 +139,7 @@ void check_door_light(boolean enabled) {
     // check mirror light is turned on and it has been on for over mirror_on_time_ms
     if (mirror_light_on and (millis() - mirror_light_on_ms > mirror_on_time_ms)) {
       // turn the light off
-      digitalWrite(MIRRORLIGHT, HIGH);
+      digitalWrite(MIRRORLIGHT, LOW);
       mirror_light_on = false;
     }
    }
@@ -143,31 +154,36 @@ void loop(){
    switch (mode) {
      case 1: // standby
        // ensure all lights are off
-       main_light_should_be_on = calculate_light_state(false, override_main_light);
-       left_lamp_should_be_on = calculate_light_state(false, override_left_lamp);
-       right_lamp_should_be_on = calculate_light_state(false, override_right_lamp);
+       main_light_should_be_on = should_light_be_on(false, override_main_light);
+       left_lamp_should_be_on = should_light_be_on(false, override_left_lamp);
+       right_lamp_should_be_on = should_light_be_on(false, override_right_lamp);
+       if(main_light_should_be_on){ Serial.println("ON"); } else { Serial.println("OFF"); }
+       Serial.println("---");
        door_light_active = true;
        desired_temperature = 8;
        break;
      case 2: // all on
-       main_light_should_be_on = calculate_light_state(true, override_main_light);
-       left_lamp_should_be_on = calculate_light_state(true, override_left_lamp);
-       right_lamp_should_be_on = calculate_light_state(true, override_right_lamp);
+       main_light_should_be_on = should_light_be_on(true, override_main_light);
+       left_lamp_should_be_on = should_light_be_on(true, override_left_lamp);
+       right_lamp_should_be_on = should_light_be_on(true, override_right_lamp);
+       Serial.println("---");
        door_light_active = false;
        desired_temperature = 20;
        break;
      case 3: // sleep
-       main_light_should_be_on = calculate_light_state(false, override_main_light);
-       left_lamp_should_be_on = calculate_light_state(false, override_left_lamp);
-       right_lamp_should_be_on = calculate_light_state(false, override_right_lamp);
+       main_light_should_be_on = should_light_be_on(false, override_main_light);
+       left_lamp_should_be_on = should_light_be_on(false, override_left_lamp);
+       right_lamp_should_be_on = should_light_be_on(false, override_right_lamp);
+       Serial.println("---");
        desired_temperature = 18;
        door_light_active = false;
        break;
      case 4: // tv
        door_light_active = false;
-       main_light_should_be_on = calculate_light_state(false, override_main_light);
-       left_lamp_should_be_on = calculate_light_state(true, override_left_lamp);
-       right_lamp_should_be_on = calculate_light_state(true, override_right_lamp);
+       main_light_should_be_on = should_light_be_on(false, override_main_light);
+       left_lamp_should_be_on = should_light_be_on(true, override_left_lamp);
+       right_lamp_should_be_on = should_light_be_on(true, override_right_lamp);
+       Serial.println("---");
        desired_temperature = 20;
        break;
      default:
@@ -177,10 +193,10 @@ void loop(){
    // set lights to desired states
    if (main_light_should_be_on != main_light_on) {
      if(main_light_should_be_on) {
-       digitalWrite(MAINLIGHT, LOW);
+       digitalWrite(MAINLIGHT, HIGH);
        main_light_on = true;
      } else {
-       digitalWrite(MAINLIGHT, HIGH);
+       digitalWrite(MAINLIGHT, LOW);
        main_light_on = false;
      }
    }
@@ -188,19 +204,19 @@ void loop(){
    
    if (left_lamp_should_be_on != lamp_left_on) {
      if(left_lamp_should_be_on) {
-       digitalWrite(LAMPLEFT, HIGH);
+       digitalWrite(LAMPLEFT, LOW);
        lamp_left_on = true;
      } else {
-       digitalWrite(LAMPLEFT, LOW);
+       digitalWrite(LAMPLEFT, HIGH);
        lamp_left_on = false;
      }
    }
    if (right_lamp_should_be_on != lamp_right_on) {
      if(right_lamp_should_be_on) {
-       digitalWrite(LAMPRIGHT, HIGH);
+       digitalWrite(LAMPRIGHT, LOW);
        lamp_right_on = true;
      } else {
-       digitalWrite(LAMPRIGHT, LOW);
+       digitalWrite(LAMPRIGHT, HIGH);
        lamp_right_on = false;
      }
    }
@@ -217,17 +233,17 @@ void loop(){
      } else if (inputString == tv_state_ctrl) {
        change_state(4);
      } else if (inputString == main_ctrl_on) {
-       override_main_light = change_override(main_light_on, true);
+       override_main_light = OVERRIDE_ON;
      } else if (inputString == main_ctrl_off) {
-       override_main_light = change_override(main_light_on, false);
+       override_main_light = OVERRIDE_OFF;
      } else if (inputString == right_lamp_ctrl_on) {
-       override_right_lamp = change_override(lamp_right_on, true);
+       override_right_lamp = OVERRIDE_ON;
      } else if (inputString == right_lamp_ctrl_off) {
-       override_right_lamp = change_override(lamp_right_on, false);
+       override_right_lamp = OVERRIDE_OFF;
      } else if (inputString == left_lamp_ctrl_on) {
-       override_left_lamp = change_override(lamp_left_on, true);
+       override_left_lamp = OVERRIDE_ON;
      } else if (inputString == left_lamp_ctrl_off) {
-       override_left_lamp = change_override(lamp_left_on, false);
+       override_left_lamp = OVERRIDE_OFF;
      } else if (inputString == heater_boost_ctrl) {
        heater_boost = true;
        heater_boost_enabled_ms = millis();
@@ -265,6 +281,7 @@ void loop(){
    }   
 }
 
+
 void serialEvent() {
   while (Serial.available()) {
     // get the new byte:
@@ -277,4 +294,8 @@ void serialEvent() {
       stringComplete = true;
     }
   }
+}
+
+void serialEventRun(void) {
+  if (Serial.available()) serialEvent();
 }
