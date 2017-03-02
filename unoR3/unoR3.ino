@@ -235,7 +235,6 @@ void loop(){
 }
 
 void serialEvent() {
-  Serial.println("serialEvent");
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();
