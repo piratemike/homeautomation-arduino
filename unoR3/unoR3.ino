@@ -86,7 +86,7 @@ void setup(){
   pinMode (MAINLIGHT, OUTPUT);
   pinMode (MIRRORLIGHT, OUTPUT);
   
-  digitalWrite(HEATER, LOW);
+  digitalWrite(HEATER, HIGH);
   digitalWrite(MAINLIGHT, HIGH);
   digitalWrite(LAMPLEFT, LOW);
   digitalWrite(LAMPRIGHT, LOW);
@@ -251,14 +251,14 @@ void loop(){
      if (!heater_on) {
        if ((DHT.temperature < desired_temperature) or (heater_boost && (millis() - heater_boost_enabled_ms < heater_boost_ms))) {
          Serial.println("HTRON");
-         digitalWrite(HEATER, HIGH);
+         digitalWrite(HEATER, LOW);
          heater_on = true;
          heater_on_ms = millis();
        }
      } else {
        if ((DHT.temperature > (desired_temperature + 1)) and !heater_boost) {
          Serial.println("HTROFF");
-         digitalWrite(HEATER, LOW);
+         digitalWrite(HEATER, HIGH);
          heater_on = false;
        }
      }
